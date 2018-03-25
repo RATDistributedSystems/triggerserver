@@ -9,10 +9,9 @@ import (
 var sessionGlobalTS *gocql.Session
 var sessionGlobalTR *gocql.Session
 var transactionNumGlobal = 0
-var configurationServer = utilities.GetConfigurationFile("config.json")
+var configurationServer = utilities.Load()
 var auditPool = initializePool(150, 190, "audit")
 var serverName = "trigger"
-
 
 func main() {
 	initCassandraTS()
@@ -20,28 +19,25 @@ func main() {
 	initCheckTriggers()
 }
 
-
 func initCassandraTS() {
 	//connect to database for transaction server databases
-	hostname := configurationServer.GetValue("cassandra_ip_ts")
-	keyspace := configurationServer.GetValue("cassandra_keyspace_ts")
-	protocol := configurationServer.GetValue("cassandra_proto_ts")
+	hostname := configurationServer.GetValue("transdb_ip")
+	keyspace := configurationServer.GetValue("transdb_keyspace")
+	protocol := configurationServer.GetValue("transdb_proto")
 	ratdatabase.InitCassandraConnection(hostname, keyspace, protocol)
 	sessionGlobalTS = ratdatabase.CassandraConnection
 }
 
 func initCassandraTR() {
 	//connect to database for trigger server databases
-	hostname := configurationServer.GetValue("cassandra_ip_tr")
-	keyspace := configurationServer.GetValue("cassandra_keyspace_tr")
-	protocol := configurationServer.GetValue("cassandra_proto_tr")
+	hostname := configurationServer.GetValue("triggerdb_ip")
+	keyspace := configurationServer.GetValue("triggerdb_keyspace")
+	protocol := configurationServer.GetValue("triggerdb_proto")
 	ratdatabase.InitCassandraConnection(hostname, keyspace, protocol)
 	sessionGlobalTR = ratdatabase.CassandraConnection
 }
 
-
-func initCheckTriggers(){
+func initCheckTriggers() {
 	checkBuyTriggers()
 	checkSellTriggers()
 }
-

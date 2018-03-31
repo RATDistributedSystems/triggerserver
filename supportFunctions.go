@@ -78,7 +78,7 @@ func checkDependency(command string, userId string, stock string) bool {
 func addFunds(userId string, addCashAmount int) {
 	usableCash := getUsableCash(userId)
 	totalCash := usableCash + addCashAmount
-	totalCashString := strconv.FormatInt(int64(totalCash), 10)
+	totalCashString := strconv.Itoa(totalCash)
 
 	//return add funds to user
 	if err := sessionGlobalTS.Query("UPDATE users SET usableCash =" + totalCashString + " WHERE userid='" + userId + "'").Exec(); err != nil {
@@ -111,8 +111,8 @@ func checkStockOwnership(userId string, stock string) (int, string) {
 	var usid string
 	//var hasStock bool
 
-	iter := sessionGlobalTS.Query("SELECT usid, stock, stockamount FROM userstocks WHERE userid='" + userId + "'").Iter()
-	for iter.Scan(&usid, &ownedstockname, &ownedstockamount) {
+	iter := sessionGlobalTS.Query("SELECT stock, stockamount FROM userstocks WHERE userid='" + userId + "' AND stock ='" + stock + "'").Iter()
+	for iter.Scan(&ownedstockname, &ownedstockamount) {
 		if ownedstockname == stock {
 			//hasStock = true
 			break

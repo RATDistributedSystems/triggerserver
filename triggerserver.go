@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/RATDistributedSystems/utilities"
 	"github.com/RATDistributedSystems/utilities/ratdatabase"
 	"github.com/gocql/gocql"
@@ -10,12 +11,15 @@ var sessionGlobalTS *gocql.Session
 var sessionGlobalTR *gocql.Session
 var transactionNumGlobal = 0
 var configurationServer = utilities.Load()
-var auditPool = initializePool(150, 190, "audit")
+var auditPool = initializePool(5, 80, "audit")
 var serverName = "trigger"
 
 func main() {
+	fmt.Println("Connecting to TS database")
 	initCassandraTS()
+	fmt.Println("Connecting to TR database")
 	initCassandraTR()
+	fmt.Println("Checking Triggers")
 	initCheckTriggers()
 }
 
@@ -38,6 +42,11 @@ func initCassandraTR() {
 }
 
 func initCheckTriggers() {
-	checkBuyTriggers()
-	checkSellTriggers()
+	fmt.Println("Starting Check Triggers")
+	go checkBuyTriggers()
+	//go checkSellTriggers()
+
+	for{
+
+	}
 }

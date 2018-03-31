@@ -15,7 +15,7 @@ func checkBuyTriggers() {
 
 	for{
 		//check every 10 milliseconds
-		timer1 := time.NewTimer(time.Millisecond * 10)
+		timer1 := time.NewTimer(time.Millisecond * 2000)
 		<-timer1.C
 
 		var userid string
@@ -27,21 +27,23 @@ func checkBuyTriggers() {
 		//check if user currently owns any of this stock
 		iter := sessionGlobalTR.Query("SELECT userid, pendingcash, triggerValue, stock FROM buyTriggers WHERE pending=TRUE").Iter()
 		for iter.Scan(&userid, &pendingcash, &triggervalue, &stock) {
-
-			//set record to "not pending"
-			if err := sessionGlobalTR.Query("UPDATE buyTriggers SET pending=FALSE WHERE userid='" + userid + "' AND stock ='" + stock + "'").Exec(); err != nil {
-				panic(fmt.Sprintf("Problem UPDATING pending buy trigger", err))
+			//delete record
+			if err := sessionGlobalTR.Query("DELETE FROM buyTriggers WHERE pending=TRUE AND userid='" + userid + "' AND stock ='" + stock + "'").Exec(); err != nil {
+				panic(fmt.Sprintf("Problem DELETING pending buy trigger", err))
 			}
-
+			//set record to not pending
+			pendingcashstring := strconv.FormatInt(int64(pendingcash), 10)
+			triggervaluestring := strconv.FormatInt(int64(triggervalue), 10)
+			if err := sessionGlobalTR.Query("INSERT INTO buyTriggers (pending, userid, stock, pendingcash, triggervalue) VALUES (FALSE ,'" + userid + "','" + stock + "'," + pendingcashstring + "," + triggervaluestring + ")").Exec(); err != nil {
+				panic(fmt.Sprintf("Problem INSERTING pending buy trigger", err))
+			}
 			//process the buy trigger
 			go processBuyTrigger(userid, stock, triggervalue, pendingcash, transactionNum)
-
 
 		}
 		if err := iter.Close(); err != nil {
 			panic(fmt.Sprintf("problem creating session", err))
 		}
-
 
 	}
 }
@@ -49,11 +51,12 @@ func checkBuyTriggers() {
 //Execute the buy trigger when the correct condition is met
 func processBuyTrigger(userId string, stock string, triggerValue int, pendingCash int, transactionNum int){
 
-
+	for {
+	fmt.Println("4");
 	//check every 10 milliseconds
-	timer1 := time.NewTimer(time.Millisecond * 10)
+	timer1 := time.NewTimer(time.Millisecond * 500)
 	<-timer1.C
-
+	fmt.Println("5");
 	var quotePrice = quoteRequest(userId, stock, transactionNum)
 	var operation bool = true;
 
@@ -63,10 +66,16 @@ func processBuyTrigger(userId string, stock string, triggerValue int, pendingCas
 		return
 	}
 
-
-	if(quotePrice >= triggerValue){
+	fmt.Println("6");
+	fmt.Println("quoteprice")
+	fmt.Println(quotePrice)
+	fmt.Println("triggervalue")
+	fmt.Println(triggerValue)
+	if(quotePrice <= triggerValue){
 		amount, _ := checkStockOwnership(userId, stock)
-		
+			fmt.Println("6.5");
+			fmt.Println("AMOUNT")
+			fmt.Println(amount)
 		if(amount != 0){ //-------------------USER ALREADY OWNS SOME OF THIS STOCK ---------------------
 
 			var usableCash int
@@ -78,14 +87,17 @@ func processBuyTrigger(userId string, stock string, triggerValue int, pendingCas
 
 			//calculate amount of stocks can be bought
 			buyableStocks := pendingCash / stockValue
-			buyableStocks = buyableStocks + stockamount
+			buyableStockTotal := buyableStocks + stockamount
+			fmt.Println(buyableStocks)
 			//remaining money
+			fmt.Println(stockValue)
 			remainingCash = pendingCash - (buyableStocks * stockValue)
+			fmt.Println(remainingCash)
 
-			buyableStocksString := strconv.FormatInt(int64(buyableStocks), 10)
+			buyableStocksString := strconv.FormatInt(int64(buyableStockTotal), 10)
 
 			//insert new stock record
-			if err := sessionGlobalTS.Query("UPDATE userstocks SET stockamount=" + buyableStocksString + " WHERE userid=" + userId + "' AND stock='" + stock + "'").Exec(); err != nil {
+			if err := sessionGlobalTS.Query("UPDATE userstocks SET stockamount=" + buyableStocksString + " WHERE userid='" + userId + "' AND stock='" + stock + "'").Exec(); err != nil {
 				panic(fmt.Sprintf("problem creating session", err))
 			}
 
@@ -95,13 +107,13 @@ func processBuyTrigger(userId string, stock string, triggerValue int, pendingCas
 			}
 
 			//add available cash to leftover cash
-			usableCash = usableCash + remainingCash
-			addFunds(userId, usableCash)
+			//usableCash = usableCash + remainingCash
+			addFunds(userId, remainingCash)
 
 			if err := sessionGlobalTR.Query("DELETE FROM buyTriggers WHERE pending=FALSE AND userid='" + userId + "' AND stock='" + stock + "'").Exec(); err != nil {
 				panic(fmt.Sprintf("problem creating session", err))
 			}
-
+			fmt.Println("7");
 			return
 
 		}else{ //--------------------------USER DOES NOT OWN ANY OF THIS STOCK----------------------------------
@@ -114,8 +126,11 @@ func processBuyTrigger(userId string, stock string, triggerValue int, pendingCas
 
 			buyableStocks := pendingCash / stockValue
 			remainingCash = pendingCash - (buyableStocks * stockValue)
-			buyableStocksString := strconv.FormatInt(int64(buyableStocks), 10)
-
+			fmt.Println("BUYABLESTROCKS")
+			fmt.Println(buyableStocks)
+			buyableStocksString := strconv.Itoa(buyableStocks)
+			fmt.Println("BUYABLESTOCKSSTRING")
+			fmt.Println(buyableStocksString)
 
 			//insert new stock record
 			if err := sessionGlobalTS.Query("INSERT INTO userstocks (usid, userid, stockamount, stock) VALUES (uuid(), '" + userId + "', " + buyableStocksString + ", '" + stock + "')").Exec(); err != nil {
@@ -127,19 +142,16 @@ func processBuyTrigger(userId string, stock string, triggerValue int, pendingCas
 				panic(fmt.Sprintf("problem creating session", err))				}
 
 			//add available cash to leftover cash
-			usableCash = usableCash + remainingCash
-			usableCashString := strconv.FormatInt(int64(usableCash), 10)
 
-			//re input the new cash value in to the user db
-			if err := sessionGlobalTS.Query("UPDATE users SET usableCash =" + usableCashString + " WHERE userid='" + userId + "'").Exec(); err != nil {
-				panic(fmt.Sprintf("problem creating session", err))
-			}
+			addFunds(userId, remainingCash)
+
 
 			if err := sessionGlobalTR.Query("DELETE FROM buyTriggers WHERE pending=FALSE AND userid='" + userId + "' AND stock='" + stock + "'").Exec(); err != nil {
 				panic(fmt.Sprintf("problem creating session", err))
 			}
-
+			fmt.Println("7");
 			return
 		}
+	}
 	}
 }

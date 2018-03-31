@@ -7,6 +7,7 @@ import (
 	//"strconv"
 	//"net"
 	//"github.com/gocql/gocql"
+	"strconv"
 	"time"
 )
 
@@ -14,7 +15,8 @@ import (
 func checkSellTriggers() {
 	for{
 
-		timer1 := time.NewTimer(time.Millisecond * 10)
+		fmt.Println("Checking Sell Triggers");
+		timer1 := time.NewTimer(time.Millisecond * 500)
 		<-timer1.C
 
 		var userid string
@@ -34,9 +36,16 @@ func checkSellTriggers() {
 		iter := sessionGlobalTR.Query("SELECT userid, pendingcash, triggerValue, stock FROM sellTriggers WHERE pending=TRUE").Iter()
 		for iter.Scan(&userid, &pendingcash, &triggervalue, &stock) {
 
-			//set record to "not pending"
-			if err := sessionGlobalTR.Query("UPDATE sellTriggers SET pending=FALSE WHERE userid='" + userid + "' AND stock ='" + stock + "'").Exec(); err != nil {
-				panic(fmt.Sprintf("Problem UPDATING pending buy trigger", err))
+
+			//delete record
+			if err := sessionGlobalTR.Query("DELETE FROM sellTriggers WHERE pending=TRUE AND userid='" + userid + "' AND stock ='" + stock + "'").Exec(); err != nil {
+				panic(fmt.Sprintf("Problem DELETING pending buy trigger", err))
+			}
+			//set record to not pending
+			pendingcashstring := strconv.FormatInt(int64(pendingcash), 10)
+			triggervaluestring := strconv.FormatInt(int64(triggervalue), 10)
+			if err := sessionGlobalTR.Query("INSERT INTO sellTriggers (pending, userid, stock, pendingcash, triggervalue) VALUES (FALSE ,'" + userid + "','" + stock + "'," + pendingcashstring + "," + triggervaluestring + ")").Exec(); err != nil {
+				panic(fmt.Sprintf("Problem INSERTING pending buy trigger", err))
 			}
 
 			//process the buy trigger
@@ -48,7 +57,7 @@ func checkSellTriggers() {
 			panic(fmt.Sprintf("problem creating session", err))
 		}
 
-
+		fmt.Println("Done Checking Sell Triggers");
 	}
 
 
@@ -60,7 +69,7 @@ func processSellTrigger(userId string, stock string, stockSellPriceCents int, tr
 
 	for {
 		//check the quote server every 10 milliseconds
-		timer1 := time.NewTimer(time.Millisecond * 10)
+		timer1 := time.NewTimer(time.Millisecond * 500)
 		<-timer1.C
 
 		//if the trigger doesnt exist exit

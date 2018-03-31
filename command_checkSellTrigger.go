@@ -59,7 +59,7 @@ func processSellTrigger(userId string, stock string, stockSellPriceCents int, tr
 	operation := false
 
 	for {
-		//check the quote server every 5 seconds
+		//check the quote server every 10 milliseconds
 		timer1 := time.NewTimer(time.Millisecond * 10)
 		<-timer1.C
 
@@ -79,7 +79,7 @@ func processSellTrigger(userId string, stock string, stockSellPriceCents int, tr
 
 			//get stocks allocated to sell
 			var pendingStocks int
-			if err := sessionGlobalTR.Query("SELECT stockAmount FROM sellTriggers WHERE userid='" + userId + "' AND stock='" + stock + "' ").Scan(&pendingStocks); err != nil {
+			if err := sessionGlobalTR.Query("SELECT stockAmount FROM sellTriggers WHERE pending=FALSE AND userid='" + userId + "' AND stock='" + stock + "' ").Scan(&pendingStocks); err != nil {
 				//panic(fmt.Sprintf("Problem inputting to Triggers Table", err))
 				return
 			}
@@ -87,7 +87,7 @@ func processSellTrigger(userId string, stock string, stockSellPriceCents int, tr
 			sellProfits := pendingStocks * currentStockPrice
 
 			//delete pending transaction
-			if err := sessionGlobalTR.Query("DELETE FROM sellTriggers WHERE userid='" + userId + "' AND stock='" + stock + "' ").Exec(); err != nil {
+			if err := sessionGlobalTR.Query("DELETE FROM sellTriggers WHERE pending=FALSE AND userid='" + userId + "' AND stock='" + stock + "' ").Exec(); err != nil {
 				//panic(err)
 				return
 			}

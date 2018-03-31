@@ -14,7 +14,7 @@ import (
 func checkBuyTriggers() {
 
 	for{
-
+		//check every 10 milliseconds
 		timer1 := time.NewTimer(time.Millisecond * 10)
 		<-timer1.C
 
@@ -23,14 +23,6 @@ func checkBuyTriggers() {
 		var triggervalue int
 		var stock string
 		var transactionNum int
-
-		//---------------------------------------------------------------------------------------------------------------
-		//---------------------------------------------------------------------------------------------------------------
-		//-- probably need to store the transaction number in to the database so it can be used when proessing other requests
-		//---------------------------------------------------------------------------------------------------------------
-		//---------------------------------------------------------------------------------------------------------------
-
-
 
 		//check if user currently owns any of this stock
 		iter := sessionGlobalTR.Query("SELECT userid, pendingcash, triggerValue, stock FROM buyTriggers WHERE pending=TRUE").Iter()
@@ -57,6 +49,8 @@ func checkBuyTriggers() {
 //Execute the buy trigger when the correct condition is met
 func processBuyTrigger(userId string, stock string, triggerValue int, pendingCash int, transactionNum int){
 
+
+	//check every 10 milliseconds
 	timer1 := time.NewTimer(time.Millisecond * 10)
 	<-timer1.C
 
@@ -77,7 +71,7 @@ func processBuyTrigger(userId string, stock string, triggerValue int, pendingCas
 
 			var usableCash int
 			var remainingCash int
-			var usid string
+			//var usid string
 
 			stockamount := amount
 			stockValue := quotePrice
@@ -91,7 +85,7 @@ func processBuyTrigger(userId string, stock string, triggerValue int, pendingCas
 			buyableStocksString := strconv.FormatInt(int64(buyableStocks), 10)
 
 			//insert new stock record
-			if err := sessionGlobalTS.Query("UPDATE userstocks SET stockamount=" + buyableStocksString + " WHERE usid=" + usid + "").Exec(); err != nil {
+			if err := sessionGlobalTS.Query("UPDATE userstocks SET stockamount=" + buyableStocksString + " WHERE userid=" + userId + "' AND stock='" + stock + "'").Exec(); err != nil {
 				panic(fmt.Sprintf("problem creating session", err))
 			}
 
@@ -104,7 +98,7 @@ func processBuyTrigger(userId string, stock string, triggerValue int, pendingCas
 			usableCash = usableCash + remainingCash
 			addFunds(userId, usableCash)
 
-			if err := sessionGlobalTR.Query("DELETE FROM buyTriggers WHERE userid='" + userId + "' AND stock='" + stock + "'").Exec(); err != nil {
+			if err := sessionGlobalTR.Query("DELETE FROM buyTriggers WHERE pending=FALSE AND userid='" + userId + "' AND stock='" + stock + "'").Exec(); err != nil {
 				panic(fmt.Sprintf("problem creating session", err))
 			}
 
@@ -141,7 +135,7 @@ func processBuyTrigger(userId string, stock string, triggerValue int, pendingCas
 				panic(fmt.Sprintf("problem creating session", err))
 			}
 
-			if err := sessionGlobalTR.Query("DELETE FROM buyTriggers WHERE userid='" + userId + "' AND stock='" + stock + "'").Exec(); err != nil {
+			if err := sessionGlobalTR.Query("DELETE FROM buyTriggers WHERE pending=FALSE AND userid='" + userId + "' AND stock='" + stock + "'").Exec(); err != nil {
 				panic(fmt.Sprintf("problem creating session", err))
 			}
 

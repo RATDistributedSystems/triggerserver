@@ -93,11 +93,11 @@ func checkTriggerExists(userId string, stock string, isBuyOperation bool) bool {
 	var count int
 
 	if isBuyOperation == true {
-		if err := sessionGlobalTR.Query("SELECT count(*) FROM buyTriggers WHERE userid='" + userId + "' AND stock='" + stock + "'").Scan(&count); err != nil {
+		if err := sessionGlobalTR.Query("SELECT count(*) FROM buyTriggers WHERE pending=FALSE AND userid='" + userId + "' AND stock='" + stock + "'").Scan(&count); err != nil {
 			panic(err)
 		}
 	} else {
-		if err := sessionGlobalTR.Query("SELECT count(*) FROM sellTriggers WHERE userid='" + userId + "' AND stock='" + stock + "'").Scan(&count); err != nil {
+		if err := sessionGlobalTR.Query("SELECT count(*) FROM sellTriggers WHERE pending=FALSE AND userid='" + userId + "' AND stock='" + stock + "'").Scan(&count); err != nil {
 			panic(err)
 		}
 	}

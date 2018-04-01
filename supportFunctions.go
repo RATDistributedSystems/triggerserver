@@ -78,7 +78,7 @@ func checkDependency(command string, userId string, stock string) bool {
 func addFunds(userId string, addCashAmount int) {
 	usableCash := getUsableCash(userId)
 	totalCash := usableCash + addCashAmount
-	totalCashString := strconv.Itoa(totalCash)
+	totalCashString := strconv.FormatInt(int64(totalCash), 10)
 
 	//return add funds to user
 	if err := sessionGlobalTS.Query("UPDATE users SET usableCash =" + totalCashString + " WHERE userid='" + userId + "'").Exec(); err != nil {

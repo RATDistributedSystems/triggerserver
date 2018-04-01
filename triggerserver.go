@@ -42,9 +42,9 @@ func initCassandraTR() {
 }
 
 func initCheckTriggers() {
-	fmt.Println("Starting Check Triggers")
+	fmt.Println("Starting Check SELL Triggers")
 	go checkBuyTriggers()
-	//go checkSellTriggers()
+	go checkSellTriggers()
 
 	for{
 

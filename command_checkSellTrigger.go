@@ -20,7 +20,7 @@ func checkSellTriggers() {
 		<-timer1.C
 
 		var userid string
-		var pendingcash int
+		var stockamount int
 		var triggervalue int
 		var stock string
 		var transactionNum int
@@ -33,8 +33,8 @@ func checkSellTriggers() {
 
 
 		//check if user currently owns any of this stock
-		iter := sessionGlobalTR.Query("SELECT userid, pendingcash, triggerValue, stock FROM sellTriggers WHERE pending=TRUE").Iter()
-		for iter.Scan(&userid, &pendingcash, &triggervalue, &stock) {
+		iter := sessionGlobalTR.Query("SELECT userid, stockAmount, triggerValue, stock FROM sellTriggers WHERE pending=TRUE").Iter()
+		for iter.Scan(&userid, &stockamount, &triggervalue, &stock) {
 
 
 			//delete record
@@ -42,9 +42,9 @@ func checkSellTriggers() {
 				panic(fmt.Sprintf("Problem DELETING pending buy trigger", err))
 			}
 			//set record to not pending
-			pendingcashstring := strconv.FormatInt(int64(pendingcash), 10)
+			stockamountstring := strconv.FormatInt(int64(stockamount), 10)
 			triggervaluestring := strconv.FormatInt(int64(triggervalue), 10)
-			if err := sessionGlobalTR.Query("INSERT INTO sellTriggers (pending, userid, stock, pendingcash, triggervalue) VALUES (FALSE ,'" + userid + "','" + stock + "'," + pendingcashstring + "," + triggervaluestring + ")").Exec(); err != nil {
+			if err := sessionGlobalTR.Query("INSERT INTO sellTriggers (pending, userid, stock, stockAmount, triggervalue) VALUES (FALSE ,'" + userid + "','" + stock + "'," + stockamountstring + "," + triggervaluestring + ")").Exec(); err != nil {
 				panic(fmt.Sprintf("Problem INSERTING pending buy trigger", err))
 			}
 
@@ -81,7 +81,10 @@ func processSellTrigger(userId string, stock string, stockSellPriceCents int, tr
 
 		//retrieve current stock price
 		currentStockPrice := quoteRequest(userId, stock, transactionNum)
-
+		fmt.Println("CURRENT STOCK PRICE")
+		fmt.Println(currentStockPrice)
+		fmt.Println("TRIGGER PRICE")
+		fmt.Println(stockSellPriceCents)
 		if currentStockPrice > stockSellPriceCents {
 
 			//sell the allocated stocks
@@ -93,7 +96,11 @@ func processSellTrigger(userId string, stock string, stockSellPriceCents int, tr
 				return
 			}
 
+			fmt.Println("Pending Stocks: ")
+			fmt.Println(pendingStocks)
 			sellProfits := pendingStocks * currentStockPrice
+			fmt.Println("SELL PROFITS: ")
+			fmt.Println(sellProfits)
 
 			//delete pending transaction
 			if err := sessionGlobalTR.Query("DELETE FROM sellTriggers WHERE pending=FALSE AND userid='" + userId + "' AND stock='" + stock + "' ").Exec(); err != nil {
